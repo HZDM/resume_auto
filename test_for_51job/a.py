@@ -1,11 +1,14 @@
 #!/usr/bin/python
 #coding:utf-8
 import time
+import datetime
 import re
 
 import requests
 import bs4
 import urllib
+
+import xlsxwriter
 
 s = requests.Session()
 # set headers
@@ -102,14 +105,43 @@ payload = {
 time.sleep(1)
 ra = s.post('http://ehire.51job.com/Candidate/SearchResume.aspx',data=payload)
 soup = bs4.BeautifulSoup(ra.text)
-print(ra.text.encode('utf-8'))
+# print(ra.text.encode('utf-8'))
 totalPages = soup.find(id='pagerTop_previousButton').find_next('strong').text
-print(totalPages)
+# print(totalPages)
 
 time.sleep(1)
 
-pageToGo = 5
+# parse the pages to resume
 
+trPattern = re.compile('trBaseInfo_\d+')
+resumeTrs = soup.find_all(id=trPattern)
+
+
+for tr in resumeTrs:
+	# no resume id means the resume is hidden
+	resumeIDtd = tr.find(attrs={'class':'inbox_td22'})
+	if resumeIDtd is None:
+		continue
+		pass
+	resumeID = resumeIDtd.find('a').text
+	resumeLink = resumeIDtd.find('a')['href']
+	latestUpdate = tr.find_all(attrs={'class':'inbox_td4'})[9].text
+	(year, month, day) = latestUpdate.split('-')
+	UpdateDate = datetime.date(int(year), int(month), int(day))
+
+	if UpdateDate == datetime.date.today() :
+		rb = s.get('http://ehire.51job.com'+resumeLink)
+		output = open('./resumes/'+resumeID+'.html', 'w')
+		output.write(rb.text.encode('utf-8'))
+		time.sleep(1)
+		pass
+	pass
+
+
+
+
+# change pages
+pageToGo = 5
 soup = bs4.BeautifulSoup(ra.text)
 viewState = soup.find(id='__VIEWSTATE')['value']
 hidCheckUserIds = soup.find(id='hidCheckUserIds')['value']
@@ -171,5 +203,5 @@ payload = {
 	'hidNoSearch':'',
 }
 
-# ra = s.post('http://ehire.51job.com/Candidate/SearchResume.aspx',data=payload)
+ra = s.post('http://ehire.51job.com/Candidate/SearchResume.aspx',data=payload)
 # print(ra.text.encode('utf-8'))
